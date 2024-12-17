@@ -59,8 +59,6 @@ class PolicyGradientSplit(PolicyGradient):
 
         err_msg = "[PG_split] initial_theta has not been specified!"
         assert initial_theta is not None, err_msg
-        # thetas matrix
-        # self.thetas = np.array(initial_theta).reshape(1,-1)        
         self.thetas = np.array([initial_theta])
         self.dim = len(self.thetas)
 
@@ -87,7 +85,6 @@ class PolicyGradientSplit(PolicyGradient):
         self.checkpoint_freq = checkpoint_freq
         self.n_jobs = n_jobs
         self.baselines = baselines
-        # self.parallel_computation = bool(self.n_jobs != 1)
         self.dim_action = self.env.action_dim
         self.dim_state = self.env.state_dim
 
@@ -161,7 +158,7 @@ class PolicyGradientSplit(PolicyGradient):
                     axis = 0
                 # Compute the split grid
                 self.generate_grid(states_vector=state_vector, axis=axis, num_samples=50)
-                print("Split grid: ", self.split_grid, self.split_grid.shape, self.split_grid.dtype)
+                # print("Split grid: ", self.split_grid, self.split_grid.shape, self.split_grid.dtype)
                 
                 # Start the split procedure
                 self.learn_split(score_vector[:,:,self.splitting_coordinate], state_vector, reward_vector, axis)
@@ -187,7 +184,7 @@ class PolicyGradientSplit(PolicyGradient):
                 gradient_mean = gradient_sum/(i+1)
 
                 self.update_parameters(estimated_gradient)
-                print("Gradient:"   , estimated_gradient)
+                # print("Gradient:"   , estimated_gradient)
 
             else:
                 name = self.directory + "/policy_tree"
@@ -322,16 +319,16 @@ class PolicyGradientSplit(PolicyGradient):
         valid_splits = {key: (value[0], self.policy.history.check_already_existing_split(key), value[2]) for key, value in valid_splits.items()}
         valid_splits = {key: value for key, value in valid_splits.items() if value[1] is True}
 
-        print("Valid splits: ", valid_splits)
+        # print("Valid splits: ", valid_splits)
         if valid_splits:
             split = max(valid_splits.items(), key=lambda x: x[1][2])
 
             best_split_thetas = split[1][0]
             best_split_state = split[0]
 
-            #if self.verbose:
-            print("Split result: ", best_split_thetas) 
-            print("Split state: ", best_split_state)
+            if self.verbose:
+                print("Split result: ", best_split_thetas) 
+                print("Split state: ", best_split_state)
 
             # update tree policy
             self.policy.history.insert(np.array(best_split_thetas), self.father_id, best_split_state)
@@ -529,10 +526,6 @@ class PolicyGradientSplit(PolicyGradient):
             self.trial = 0
             self.gradient_sum = 0
             return
-
-        
-        # mean = np.mean(self.gradient_history[-n:], axis=0)
-        # self.mean = self.gradient_sum/self.ite
         
         delta = np.linalg.norm(self.delta)
         self.delta = 0
@@ -585,7 +578,7 @@ class PolicyGradientSplit(PolicyGradient):
         }
 
         # Save the json
-        name = self.directory + "/split_results.json"
+        name = self.directory + "/pg_results.json"
         with io.open(name, 'w', encoding='utf-8') as f:
             f.write(json.dumps(results, ensure_ascii=False, indent=4))
             f.close()
@@ -610,9 +603,7 @@ class PolicyGradientSplit(PolicyGradient):
         else:
             b = np.zeros(1)
 
-        reward_trajectory = (reward_vector[...,None][...,None] - b[np.newaxis,...]) * rolling_scores
-        # reward_trajectory = reward_trajectory.reshape(reward_trajectory.shape[0], reward_trajectory.shape[1], p, d_a)
-        
+        reward_trajectory = (reward_vector[...,None][...,None] - b[np.newaxis,...]) * rolling_scores        
         not_avg_gradient = np.sum(gamma_seq[...,None][...,None] * reward_trajectory, axis=1)
 
         estimated_gradient = np.mean(

@@ -50,12 +50,8 @@ class NeuralNetworkPolicy(BasePolicy, ABC):
         self.param_idx = np.cumsum(self.params_per_layer)
         self.tot_params = np.sum(self.params_per_layer)
 
-        if self.parameters is None:
-            # initialize the weights to one
-            # self.parameters = np.ones(np.sum(self.params_per_layer))
-            self.parameters = np.random.normal(0, 1, np.sum(self.params_per_layer))
+        self.parameters = self.get_parameters()
         self.set_parameters(self.parameters)
-
         
     def draw_action(self, state):
         tensor_state = torch.tensor(np.array(state, dtype=np.float64)).unsqueeze(0)
@@ -65,7 +61,12 @@ class NeuralNetworkPolicy(BasePolicy, ABC):
     def reduce_exploration(self):
         raise NotImplementedError("[NNPolicy] Ops, not implemented yet!")
     
-
+    def get_parameters(self):
+        theta = []
+        for i, param_layer in enumerate(self.net.parameters()):
+            theta += list(param_layer.data.numpy().flatten())
+        return np.array(theta)
+    
     def set_parameters(self, thetas) -> None:
         # check on the number of parameters
         err_msg = f"[NNPolicy] Number of parameters {len(thetas)} is different from "
@@ -90,7 +91,7 @@ class NeuralNetworkPolicy(BasePolicy, ABC):
     
 
 
-class DeepGaussian(NeuralNetworkPolicy):
+class DeepGaussianPolicy(NeuralNetworkPolicy):
     def __init__(
             self, parameters: np.array = None,
             input_size: int = 1,
@@ -149,9 +150,9 @@ class DeepGaussian(NeuralNetworkPolicy):
 
     def draw_action(self, state) -> np.array:
         means = np.array(super().draw_action(state=state), dtype=np.float64)
-        # action = np.array(np.random.normal(means, self.std_dev), dtype=np.float64)
+
         action = np.array(
             means + self.std_dev * np.random.normal(0, 1, self.dim_action),
             dtype=np.float64
         )
-        return action
+        return action.ravel()

@@ -46,6 +46,8 @@ class GaussianPolicy(BasePolicy, ABC):
         self.std_decay = std_decay
         self.std_min = std_min
 
+        self.set_parameters(self.parameters)
+
         return
 
     def draw_action(self, state) -> float:
@@ -63,8 +65,6 @@ class GaussianPolicy(BasePolicy, ABC):
             mean = np.array(self.parameters @ state, dtype=np.float64)
 
         action = np.array(np.random.normal(mean, self.std_dev), dtype=np.float64)
-        print(self.parameters.shape, self.parameters, len(state))
-
         return action
 
     def reduce_exploration(self):
@@ -75,6 +75,15 @@ class GaussianPolicy(BasePolicy, ABC):
             self.parameters = copy.deepcopy(thetas)
         else:
             self.parameters = np.array(np.split(thetas, self.dim_action))
+
+    def get_parameters(self):
+        theta = []
+        if not self.multi_linear:
+            theta = self.parameters
+        else:
+            theta = self.parameters.flatten()
+
+        return np.array(theta)
 
     def compute_score(self, state, action) -> np.array:
         if self.std_dev == 0:

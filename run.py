@@ -45,8 +45,8 @@ parser.add_argument(
     "--pol",
     help="The policy used.",
     type=str,
-    default="split_gaussian",
-    choices=["gaussian", "split_gaussian"]
+    default="deep_gaussian",
+    choices=["gaussian", "split_gaussian", "deep_gaussian"]
 )
 parser.add_argument(
     "--env",
@@ -134,7 +134,7 @@ parser.add_argument(
     "--max_splits",
     help="Maximum number of division.",
     type=int,
-    default=10,
+    default=30,
 )
 parser.add_argument(
     "--deterministic",
@@ -165,7 +165,8 @@ base_dir = args.dir
 base_dir += "_" + datetime.datetime.now().strftime("%m_%d-%H_%M_")
 
 for i in range(args.n_trials):
-    np.random.seed(i)
+    torch.manual_seed(i)
+    np.random.seed(i)    
     dir_name = f"{args.alg}_{args.ite}_{args.env}_{args.horizon}_{args.lr_strategy}_"
     dir_name += f"{str(args.lr).replace('.', '')}_{args.pol}_batch_{args.batch}_"
     if args.clip:
@@ -212,7 +213,7 @@ for i in range(args.n_trials):
     if args.pol == "gaussian":
         tot_params = s_dim * a_dim
         pol = GaussianPolicy(
-            parameters=np.ones(tot_params),
+            parameters=np.zeros(tot_params),
             dim_state=s_dim,
             dim_action=a_dim,
             std_dev=args.std,
@@ -223,7 +224,7 @@ for i in range(args.n_trials):
     elif args.pol == "split_gaussian":
         tot_params = a_dim
         pol = SplitGaussianPolicy(
-            parameters=np.ones(tot_params),
+            parameters=np.zeros(tot_params),
             dim_state=s_dim,
             dim_action=a_dim,
             std_dev=args.std,
@@ -232,8 +233,45 @@ for i in range(args.n_trials):
             deterministic=args.deterministic,
             linear=args.linear
         )
+    elif args.pol in ["nn", "deep_gaussian"]:
+        net = nn.Sequential(
+            nn.Linear(s_dim, 100, bias=False),
+            nn.Tanh(),
+            nn.Linear(100, 50, bias=False),
+            nn.Tanh(),
+            nn.Linear(50, 25, bias=False),
+            nn.Tanh(),
+            nn.Linear(25, a_dim, bias=False),
+            nn.Tanh()
+        )
+        model_desc = dict(
+            layers_shape=[(s_dim, 100), (100, 50), (50, 25), (25, a_dim)]
+        )
+        if args.pol == "nn":
+            pol = NeuralNetworkPolicy(
+                parameters=None,
+                input_size=s_dim,
+                output_size=a_dim,
+                model=copy.deepcopy(net),
+                model_desc=copy.deepcopy(model_desc)
+            )
+        elif args.pol == "deep_gaussian":
+            pol = DeepGaussianPolicy(
+                parameters=None,
+                input_size=s_dim,
+                output_size=a_dim,
+                model=copy.deepcopy(net),
+                model_desc=copy.deepcopy(model_desc),
+                std_dev=args.std,
+                std_decay=0,
+                std_min=1e-6
+            )
+        else:
+            raise ValueError("Invalid nn policy name.")
+        tot_params = pol.tot_params
     else:
-        raise NotImplementedError
+        raise ValueError(f"Invalid policy name.")
+
     
     dir_name += f"{tot_params}_std_{string_var}"
     dir_name += f"_alpha_{str(args.alpha).replace('.', '')}"
@@ -247,7 +285,8 @@ for i in range(args.n_trials):
             lr=[args.lr],
             lr_strategy=args.lr_strategy,
             estimator_type=args.estimator,
-            initial_theta=[0] * tot_params,
+            # initial_theta=[0] * tot_params,
+            initial_theta=pol.parameters,
             ite=args.ite,
             batch_size=args.batch,
             env=env,
@@ -265,7 +304,8 @@ for i in range(args.n_trials):
             lr=[args.lr],
             lr_strategy=args.lr_strategy,
             estimator_type=args.estimator,
-            initial_theta=[0] * tot_params,
+            # initial_theta=[0] * tot_params,
+            initial_theta=pol.parameters,
             ite=args.ite,
             batch_size=args.batch,
             env=env,

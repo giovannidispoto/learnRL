@@ -60,7 +60,7 @@ class PolicyGradient:
 
         err_msg = "[PG] initial_theta has not been specified!"
         assert initial_theta is not None, err_msg
-        self.thetas = np.array(initial_theta)
+        self.thetas = policy.get_parameters()
         self.dim = len(self.thetas)
 
         err_msg = "[PG] env is None."
@@ -107,7 +107,7 @@ class PolicyGradient:
         # create the adam optimizers
         self.adam_optimizer = None
         if self.lr_strategy == "adam":
-            self.adam_optimizer = Adam()
+            self.adam_optimizer = Adam(alpha=self.lr)
         return
 
     def learn(self) -> None:

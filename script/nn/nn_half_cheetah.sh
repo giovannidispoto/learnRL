@@ -1,0 +1,1 @@
+python3 /Users/gianmarcotedeschi/Projects/learnRL/run.py --dir /Users/gianmarcotedeschi/Projects/learnRL/results/ --ite 1000 --alg pg --pol deep_gaussian --env half_cheetah --horizon 100 --gamma 0.99 --lr 1e-3 --lr_strategy adam --batch 100 --clip 1 --n_trials 10 --std 0.1
