@@ -185,7 +185,7 @@ class PolicyGradientSplit(PolicyGradient):
                 gradient_sum += estimated_gradient
                 gradient_mean = gradient_sum/(i+1)
 
-                self.update_parameters(estimated_gradient, )
+                self.update_parameters(estimated_gradient, save_png= self.time % 50 == 0 or self.time == self.ite -1)
                 # print("Gradient:"   , estimated_gradient)
 
             else:
@@ -350,7 +350,7 @@ class PolicyGradientSplit(PolicyGradient):
             print("No split found!")
             self.split_done = False
 
-    def update_parameters(self, estimated_gradient, local=False, split_state=None):
+    def update_parameters(self, estimated_gradient, local=False, split_state=None, save_png=True):
         new_theta = None
         coord = None
         old_theta = self.thetas
@@ -374,7 +374,8 @@ class PolicyGradientSplit(PolicyGradient):
         else:
             self.thetas = new_theta
             self.policy.history.update_all_leaves(self.thetas)
-            self.policy.history.to_png(self.directory + "/policy_tree")
+            if save_png:
+                self.policy.history.to_png(self.directory + "/policy_tree")
 
 ############################################################################################################
     def compute_p(self, left, right):
