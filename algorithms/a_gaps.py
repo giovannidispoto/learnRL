@@ -95,7 +95,7 @@ class PolicyGradientSplit(PolicyGradient):
         self.best_theta = np.zeros(self.dim, dtype=np.float64)
         self.best_performance_theta = -np.inf
         self.sampler = TrajectorySampler(
-            env=self.env, pol=self.policy, data_processor=self.data_processor
+            env=self.env, pol=self.policy, data_processor=self.data_processor, n_jobs=self.n_jobs
         )
 
         # init the theta history
@@ -128,11 +128,13 @@ class PolicyGradientSplit(PolicyGradient):
         gradient_sum, gradient_mean = 0, 0
 
         for i in tqdm(range(self.ite)):
-            res = []
+            #res = []
 
-            for j in range(self.batch_size):
-                tmp_res = self.sampler.collect_trajectory(params=copy.deepcopy(self.thetas), split=True)
-                res.append(tmp_res)
+            #for j in range(self.batch_size):
+            #    tmp_res = self.sampler.collect_trajectory(params=copy.deepcopy(self.thetas), split=True)
+            #    res.append(tmp_res)
+            res = self.sampler.collect_trajectories(params=copy.deepcopy(self.thetas), split=True, num_trajectories=self.batch_size)
+
 
             # Update performance
             perf_vector = np.zeros(self.batch_size, dtype=np.float64)
@@ -183,7 +185,7 @@ class PolicyGradientSplit(PolicyGradient):
                 gradient_sum += estimated_gradient
                 gradient_mean = gradient_sum/(i+1)
 
-                self.update_parameters(estimated_gradient)
+                self.update_parameters(estimated_gradient, )
                 # print("Gradient:"   , estimated_gradient)
 
             else:
