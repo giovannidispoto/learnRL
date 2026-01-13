@@ -15,6 +15,7 @@ import io
 from tqdm import tqdm
 import copy
 from adam.adam import Adam
+import time
 
 
 import scipy.stats as stats
@@ -231,8 +232,8 @@ class PolicyGradientSplit(PolicyGradient):
 
 
         return
-    """
-    def split(self, score_vector, state_vector, reward_vector, split_state) -> list:
+
+    def split_old(self, score_vector, state_vector, reward_vector, split_state) -> list:
         traj = []
     
         closest_leaf = self.policy.history.find_region_leaf(split_state)
@@ -294,7 +295,6 @@ class PolicyGradientSplit(PolicyGradient):
 
         traj = [traj_l, traj_r]
         return [estimated_gradient, reward_trajectory, new_thetas, traj]
-    """
 
     def split(self, score_vector, state_vector, reward_vector, split_state) -> list:
         closest_leaf = self.policy.history.find_region_leaf(split_state)
@@ -352,11 +352,38 @@ class PolicyGradientSplit(PolicyGradient):
         splits = {}
 
         for i in range(len(self.split_grid)):
+            #measure execution time
+            #start_time = time.time()
+            #res_old = self.split_old(score_vector, state_vector, reward_vector, np.array([axis, self.split_grid[i][axis]]))
+            #tot_time = time.time() - start_time
+            #print("Old split time: %s seconds " % tot_time)
+            #start_time = time.time()
             res = self.split(score_vector, state_vector, reward_vector, np.array([axis, self.split_grid[i][axis]]))
+            #tot_time = time.time() - start_time
+            #print("New split time: %s seconds" % tot_time)
+            #reward_trajectory_old = res_old[SplitResults.RewardTrajectories]
+            #estimated_gradient_old = res_old[SplitResults.Gradient]
+            #thetas_old = res_old[SplitResults.SplitThetas]
 
             reward_trajectory = res[SplitResults.RewardTrajectories]
             estimated_gradient = res[SplitResults.Gradient]
             thetas = res[SplitResults.SplitThetas]
+
+            # check thetas
+            #assert len(thetas) == len(thetas_old)
+            #for k in range(len(thetas)):
+            #    assert (thetas[k] == thetas_old[k]).all()
+
+            # check estimated gradient
+            #assert len(estimated_gradient) == len(estimated_gradient_old)
+            #for q in range(len(estimated_gradient)):
+            #    assert (estimated_gradient[q] == estimated_gradient_old[q]).all()
+
+            #assert len(reward_trajectory) == len(reward_trajectory_old)
+            #for z in range(len(reward_trajectory)):
+            #    for k in range(len(reward_trajectory[z])):
+            #        assert (res[SplitResults.RewardTrajectories][z][k] == res_old[SplitResults.RewardTrajectories][z][
+            #            k]).all()
 
             gradient_norm = np.linalg.norm(estimated_gradient[0]) + np.linalg.norm(estimated_gradient[1])
 
