@@ -231,7 +231,7 @@ class PolicyGradientSplit(PolicyGradient):
 
 
         return
-
+    """
     def split(self, score_vector, state_vector, reward_vector, split_state) -> list:
         traj = []
     
@@ -293,6 +293,59 @@ class PolicyGradientSplit(PolicyGradient):
                 traj_r += 1
 
         traj = [traj_l, traj_r]
+        return [estimated_gradient, reward_trajectory, new_thetas, traj]
+    """
+
+    def split(self, score_vector, state_vector, reward_vector, split_state) -> list:
+        closest_leaf = self.policy.history.find_region_leaf(split_state)
+        lower_vertex = self.policy.history.get_lower_vertex(closest_leaf, self.dim_state)
+        upper_vertex = self.policy.history.get_upper_vertex(closest_leaf, self.dim_state)
+
+        # Define Split Boundaries
+        left_upper = upper_vertex.copy()
+        left_upper[int(split_state[0])] = split_state[1]
+
+        right_lower = lower_vertex.copy()
+        right_lower[int(split_state[0])] = split_state[1]
+
+        left_lower = lower_vertex
+        right_upper = upper_vertex
+
+        states = np.asarray(state_vector)
+
+        mask_left = np.all((states > left_lower) & (states <= left_upper), axis=2)
+        mask_right = np.all((states > right_lower) & (states <= right_upper), axis=2)
+
+        score_left = np.zeros((self.batch_size, self.env.horizon, self.env.action_dim), dtype=np.float64)
+        score_right = np.zeros((self.batch_size, self.env.horizon, self.env.action_dim), dtype=np.float64)
+
+        score_left[mask_left] = score_vector[mask_left]
+        score_right[mask_right] = score_vector[mask_right]
+
+        steps_per_traj_l = np.sum(mask_left, axis=1)
+        steps_per_traj_r = np.sum(mask_right, axis=1)
+
+        reward_reshaped = reward_vector[..., None]
+
+        reward_trajectory_left = np.sum(np.cumsum(score_left, axis=1) * reward_reshaped, axis=1)
+        reward_trajectory_right = np.sum(np.cumsum(score_right, axis=1) * reward_reshaped, axis=1)
+
+        estimated_gradient_left = np.mean(reward_trajectory_left, axis=0)
+        estimated_gradient_right = np.mean(reward_trajectory_right, axis=0)
+
+        estimated_gradient = [estimated_gradient_left, estimated_gradient_right]
+        reward_trajectory = [reward_trajectory_left, reward_trajectory_right]
+
+        new_thetas = [
+            self.update_parameters(estimated_gradient_left, local=True, split_state=split_state),
+            self.update_parameters(estimated_gradient_right, local=True, split_state=split_state)
+        ]
+
+        traj_l_total = np.sum(steps_per_traj_l > steps_per_traj_r)
+        traj_r_total = np.sum(steps_per_traj_l <= steps_per_traj_r)
+
+        traj = [traj_l_total, traj_r_total]
+
         return [estimated_gradient, reward_trajectory, new_thetas, traj]
 
     def learn_split(self, score_vector, state_vector, reward_vector, axis) -> None:
